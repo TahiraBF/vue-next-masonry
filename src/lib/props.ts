@@ -27,7 +27,6 @@ export default {
       type: [Object],
       default: () => {}
    },
-
    resolveSlot: {
       type: Boolean,
       default: false

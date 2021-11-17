@@ -1,68 +1,57 @@
-import { defineComponent, h as createElement } from 'vue';
+/* eslint-disable operator-linebreak */
+import {
+   defineComponent,
+   h as createElement,
+   ref,
+   nextTick,
+   onMounted,
+   onUpdated,
+   onBeforeUnmount
+} from 'vue';
 import type { SlotWrapper } from './types';
 import { breakpointValue } from './helpers';
 import props from './props';
 
 export default defineComponent({
    props,
+   // eslint-disable-next-line @typescript-eslint/no-shadow
+   setup(props, { slots }) {
+      const displayColumns = ref(2);
+      const displayGutter = ref(0);
+      const wrapperWidth = ref(0);
 
-   data() {
-      return {
-         wrapperWidth: 0,
-         displayColumns: 2,
-         displayGutter: 0
-      };
-   },
+      function calculateGutterSize(width: number) {
+         displayGutter.value = breakpointValue(props.gutter, width);
+      }
 
-   activated() {
-      this.$nextTick(this.render);
-   },
-
-   mounted() {
-      window.addEventListener('resize', this.render);
-      this.$nextTick(this.render);
-   },
-
-   updated() {
-      this.$nextTick(this.render);
-   },
-
-   unmounted() {
-      window.removeEventListener('resize', this.render);
-   },
-
-   methods: {
-      // Recalculate how many columns to display based on window width
-      // and the value of the passed `:cols=` prop
-      render() {
-         const windowWidth = window?.innerWidth || Infinity;
-         const { wrapperWidth } = this;
-
-         if (wrapperWidth !== windowWidth) {
-            this.wrapperWidth = windowWidth;
-
-            this.calculateColumnCount(this.wrapperWidth);
-            this.calculateGutterSize(this.wrapperWidth);
-         }
-      },
-
-      calculateGutterSize(width: number) {
-         this.displayGutter = breakpointValue(this.gutter, width);
-      },
-
-      calculateColumnCount(width: number) {
-         let columnLength = breakpointValue(this.cols, width) || 0;
+      function calculateColumnCount(width: number) {
+         let columnLength = breakpointValue(props.cols, width) || 0;
 
          // Make sure we can return a valid value
          columnLength = Math.max(1, Number(columnLength));
 
-         this.displayColumns = columnLength;
-      },
+         displayColumns.value = columnLength;
+      }
 
-      getColumnsWithChildItems(): [] {
+      // Recalculate how many columns to display based on window width
+      // and the value of the passed `:cols=` prop
+      function reCalculate() {
+         const windowWidth = window?.innerWidth || Infinity;
+
+         // Window resize events get triggered on page height
+         // change which when loading the page can result in multiple
+         // needless calculations. We prevent this here.
+         if (wrapperWidth.value !== windowWidth) {
+            wrapperWidth.value = windowWidth;
+
+            calculateColumnCount(wrapperWidth.value);
+            calculateGutterSize(wrapperWidth.value);
+         }
+      }
+
+      function getChildItemsInColumnsArray() {
          const columns: any = [];
-
-         const slot = this.$slots.default?.() as SlotWrapper;
+         const slot = slots.default?.() as SlotWrapper;
          let children = [];
 
          if (slot.length > 1) {
@@ -70,13 +59,14 @@ export default defineComponent({
          } else {
             children = slot[0].children as any[];
 
-            if (children.length === 1 && this.resolveSlot) {
+            if (children.length === 1 && props.resolveSlot) {
                children = children[0]?.children || [];
             }
          }
 
          if (children.length === 0) return [];
 
+         // Loop through child elements
          for (
             let i = 0, visibleItemI = 0;
             i < children.length;
@@ -84,7 +74,7 @@ export default defineComponent({
          ) {
             if (!children[i].type) visibleItemI--;
 
-            const columnIndex = visibleItemI % this.displayColumns;
+            const columnIndex = visibleItemI % displayColumns.value;
 
             if (!columns[columnIndex]) {
                columns[columnIndex] = [];
@@ -95,46 +85,70 @@ export default defineComponent({
 
          return columns;
       }
-   },
 
-   render() {
-      const { displayGutter } = this;
+      function render() {
+         const columnsContainingChildren = getChildItemsInColumnsArray();
+         const isGutterSizeUnitless =
+            parseInt(displayGutter.value.toString(), 10) ===
+            displayGutter.value * 1;
+         const gutterSize = isGutterSizeUnitless
+            ? `${displayGutter.value}px`
+            : displayGutter.value;
 
-      const columnsContainingChildren = this.getColumnsWithChildItems();
-      const isGutterSizeUnitless = parseInt(displayGutter.toString(), 10) === displayGutter * 1;
-      const gutterSize = isGutterSizeUnitless
-         ? `${displayGutter}px`
-         : displayGutter;
-
-      const containerConfig = {
-         style: {
-            display: ['-webkit-box', '-ms-flexbox', 'flex'],
-            marginLeft: `-${gutterSize}`
-         }
-      };
-
-      const columnStyle = {
-         boxSizing: 'border-box',
-         backgroundClip: 'padding-box',
-         width: `${100 / this.displayColumns}%`,
-         border: '0px solid transparent',
-         borderLeftWidth: gutterSize
-      };
-
-      const columns = columnsContainingChildren.map((children, index) => {
-         const config = {
-            key: `${index}-${columnsContainingChildren.length}`,
-            style: this.css ? columnStyle : null,
-            class: this.columnClass,
-            attrs: this.columnAttr
+         const containerStyle = {
+            style: {
+               display: ['-webkit-box', '-ms-flexbox', 'flex'],
+               marginLeft: `-${gutterSize}`
+            }
          };
 
-         // Create column element and inject the children
-         return createElement(this.columnTag, config, children);
+         const columnStyle = {
+            boxSizing: 'border-box',
+            backgroundClip: 'padding-box',
+            width: `${100 / displayColumns.value}%`,
+            border: '0 solid transparent',
+            borderLeftWidth: gutterSize
+         };
+
+         const columns = columnsContainingChildren.map(
+            (children: any, index: number) => {
+               const config = {
+                  key: `${index}-${columnsContainingChildren.length}`,
+                  style: props.css ? columnStyle : null,
+                  class: props.columnClass,
+                  attrs: props.columnAttr
+               };
+               // Create column element and inject the children
+               return createElement(props.columnTag, config, children);
+            }
+         );
+
+         // Return wrapper with columns
+         // @ts-ignore
+         return createElement(props.tag, props.css && containerStyle, columns);
+      }
+
+      onMounted(() => {
+         if (window) {
+            window.addEventListener('resize', reCalculate);
+         }
+         nextTick(() => {
+            reCalculate();
+         });
       });
 
-      // Return wrapper with columns
-      // @ts-ignore
-      return createElement(this.tag, this.css && containerConfig, columns);
+      onUpdated(() => {
+         nextTick(() => {
+            reCalculate();
+         });
+      });
+
+      onBeforeUnmount(() => {
+         if (window) {
+            window.removeEventListener('resize', reCalculate);
+         }
+      });
+
+      return () => render();
    }
 });

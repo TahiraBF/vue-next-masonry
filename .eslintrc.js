@@ -2,7 +2,7 @@ module.exports = {
    env: {
       es6: true,
       browser: true,
-      node: true,
+      node: true
    },
    plugins: ['@typescript-eslint', 'import'],
    extends: [
@@ -14,7 +14,7 @@ module.exports = {
       'plugin:import/recommended',
       'plugin:import/typescript',
       'airbnb-typescript/base',
-      'plugin:@typescript-eslint/recommended',
+      'plugin:@typescript-eslint/recommended'
    ],
 
    parserOptions: {
@@ -30,7 +30,7 @@ module.exports = {
       'import/resolver': {
          node: { extensions: ['.js', '.mjs', '.ts', '.vue'] },
          typescript: {}
-      },
+      }
    },
 
    overrides: [
@@ -38,13 +38,13 @@ module.exports = {
          files: ['*.vue'],
          parser: 'vue-eslint-parser',
          parserOptions: {
-            parser: '@typescript-eslint/parser',
+            parser: '@typescript-eslint/parser'
          },
          rules: {
             'no-unused-vars': 'off',
-            '@typescript-eslint/no-unused-vars': 'off',
-         },
-      },
+            '@typescript-eslint/no-unused-vars': 'off'
+         }
+      }
    ],
 
    rules: {
@@ -70,9 +70,9 @@ module.exports = {
             singleline: 3,
             multiline: {
                max: 1,
-               allowFirstLine: false,
-            },
-         },
+               allowFirstLine: false
+            }
+         }
       ],
 
       'no-param-reassign': 'warn',
@@ -80,8 +80,8 @@ module.exports = {
       'import/no-extraneous-dependencies': [
          'error',
          {
-            devDependencies: true,
-         },
+            devDependencies: true
+         }
       ]
-   },
+   }
 };
